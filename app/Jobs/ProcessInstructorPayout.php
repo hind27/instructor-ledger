@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Constants\FinancialConstants;
 use App\Models\LedgerEntry;
 use App\Models\Payout;
 use App\Models\PayoutItem;
@@ -27,7 +28,7 @@ class ProcessInstructorPayout implements ShouldQueue
     {
         // 1. Get all unpaid ledger entries for this instructor
         $unpaidEntries = LedgerEntry::where('instructor_id', $this->instructor->id)
-            ->where('type', 'earning')
+            ->where('type', FinancialConstants::LEDGER_TYPE_EARNING)
             ->whereNotIn('id', function ($query) {
                 $query->select('ledger_entry_id')->from('payout_items');
             })
@@ -55,7 +56,7 @@ class ProcessInstructorPayout implements ShouldQueue
             $payout = Payout::create([
                 'instructor_id'   => $this->instructor->id,
                 'amount_piastres' => $totalAmount,
-                'status'          => 'processing',
+                'status' => FinancialConstants::PAYOUT_STATUS_PROCESSING,
                 'idempotency_key' => $idempotencyKey,
             ]);
 
@@ -79,22 +80,20 @@ class ProcessInstructorPayout implements ShouldQueue
 
             // Success
             $payout->update([
-                'status'             => 'paid',
+                'status' => FinancialConstants::PAYOUT_STATUS_PAID,
                 'provider_reference' => $reference,
                 'paid_at'            => now(),
             ]);
-
         } catch (\RuntimeException $e) {
             if (str_contains($e->getMessage(), 'timed out')) {
                 // Unknown — money may have moved, do NOT retry blindly
-                $payout->update(['status' => 'unknown']);
+                $payout->update(['status' => FinancialConstants::PAYOUT_STATUS_UNKNOWN]);
 
                 // Dispatch a status check job
                 CheckPayoutStatus::dispatch($payout)->delay(now()->addMinutes(5));
-
             } else {
                 // Clean failure — safe to mark as failed
-                $payout->update(['status' => 'failed']);
+                $payout->update(['status' => FinancialConstants::PAYOUT_STATUS_FAILED]);
             }
         }
     }

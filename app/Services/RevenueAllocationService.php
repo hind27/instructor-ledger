@@ -5,17 +5,18 @@ namespace App\Services;
 use App\Models\LedgerEntry;
 use App\Models\Subscription;
 use Illuminate\Support\Facades\DB;
+use App\Constants\FinancialConstants;
 
 class RevenueAllocationService
 {
     // Platform keeps 30%, instructors share 70%
-    const PLATFORM_CUT_PERCENT = 30;
+
 
     public function allocate(Subscription $subscription): void
     {
         // 1. Check if already allocated — idempotency check
         $alreadyAllocated = LedgerEntry::where('subscription_id', $subscription->id)
-            ->where('type', 'earning')
+        ->where('type', FinancialConstants::LEDGER_TYPE_EARNING)
             ->exists();
 
         if ($alreadyAllocated) {
@@ -24,7 +25,7 @@ class RevenueAllocationService
 
         // 2. Calculate instructor share pool
         $totalPaid        = $subscription->amount_paid_piastres;
-        $platformCut      = (int) round($totalPaid * self::PLATFORM_CUT_PERCENT / 100);
+       $platformCut = (int) round($totalPaid * FinancialConstants::PLATFORM_CUT_PERCENT / 100);
         $instructorPool   = $totalPaid - $platformCut;
 
         // 3. Get courses accessed grouped by instructor

@@ -35,4 +35,13 @@ class Subscription extends Model
     {
         return $this->hasMany(LedgerEntry::class);
     }
+    public function statusHistory()
+{
+    return $this->hasMany(SubscriptionStatus::class);
+}
+
+public function latestStatus()
+{
+    return $this->hasOne(SubscriptionStatus::class)->latestOfMany('changed_at');
+}
 }

@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Constants\FinancialConstants;
 use App\Models\Payout;
 use App\Services\MockPaymentProvider;
 use Illuminate\Bus\Queueable;
@@ -18,7 +19,7 @@ class CheckPayoutStatus implements ShouldQueue
 
     public function handle(MockPaymentProvider $provider): void
     {
-        if ($this->payout->status !== 'unknown') {
+        if ($this->payout->status !== FinancialConstants::PAYOUT_STATUS_UNKNOWN) {
             return;
         }
 
@@ -31,11 +32,11 @@ class CheckPayoutStatus implements ShouldQueue
 
         if ($result === MockPaymentProvider::OUTCOME_SUCCESS) {
             $this->payout->update([
-                'status'  => 'paid',
+                'status'  => FinancialConstants::PAYOUT_STATUS_PAID,
                 'paid_at' => now(),
             ]);
         } else {
-            $this->payout->update(['status' => 'failed']);
+            $this->payout->update(['status' => FinancialConstants::PAYOUT_STATUS_UNKNOWN]);
         }
     }
 }
